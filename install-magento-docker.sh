@@ -98,7 +98,7 @@ fi
 
 # 4. Descargar Magento y Levantarlo
 echo "[*] Descargando Magento $MAGENTO_VERSION..."
-./bin/download "$MAGENTO_VERSION" || true
+./bin/download community "$MAGENTO_VERSION" || true
 
 echo "[*] Levantando contenedores..."
 ./bin/start
