@@ -74,7 +74,7 @@ echo "[*] Configurando entorno Docker en $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
-if [ ! -f "docker-compose.yml" ]; then
+if [ ! -f "compose.yaml" ] && [ ! -f "docker-compose.yml" ]; then
     echo "[*] Descargando template..."
     curl -s https://raw.githubusercontent.com/markshust/docker-magento/master/lib/template | bash
 fi
