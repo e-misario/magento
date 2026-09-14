@@ -115,3 +115,45 @@ Si deseas entrar directamente a la consola de Linux dentro del contenedor de PHP
 
 > **⚠️ Acerca de `./bin/clinotty`:** 
 > Verás que muchos comandos empiezan con `./bin/clinotty`. Este es un script mágico que envía el comando `bin/magento` directamente al contenedor interno de PHP. ¡No lo omitas!
+
+---
+
+## ☁️ 7. Comandos de Magento Cloud CLI
+
+Si estás trabajando con proyectos hosteados en **Adobe Commerce on Cloud**, utilizamos la herramienta `magento-cloud`. Esta herramienta **se ejecuta en tu máquina (o VPS)**, y no dentro del contenedor de Docker.
+
+### Instalación Manual (Si olvidaste hacerlo en el script inicial)
+Si olvidaste usar el flag `--install-cloud-cli` durante la instalación, puedes instalar la herramienta ejecutando este bloque de comandos en tu terminal (Host):
+```bash
+sudo apt-get update && sudo apt-get install -y php-cli php-curl php-xml php-mbstring curl git unzip
+curl -sS https://accounts.magento.cloud/cli/installer | php
+export PATH="$PATH:$HOME/.magento-cloud/bin"
+echo 'export PATH="$PATH:$HOME/.magento-cloud/bin"' >> ~/.bashrc
+```
+
+### Comandos Cloud más utilizados:
+
+*   **Iniciar sesión en tu cuenta de Cloud:**
+    ```bash
+    magento-cloud login
+    ```
+*   **Listar todos tus proyectos de la nube:**
+    ```bash
+    magento-cloud project:list
+    ```
+*   **Descargar (Clonar) un proyecto de la nube a tu servidor local:**
+    ```bash
+    magento-cloud get <ID_DEL_PROYECTO>
+    ```
+*   **Listar los entornos (ramas) del proyecto actual:**
+    ```bash
+    magento-cloud environment:list
+    ```
+*   **Conectarse por SSH a un entorno de la nube:**
+    ```bash
+    magento-cloud ssh
+    ```
+*   **Ver los logs del servidor en la nube (ej. errores de despliegue):**
+    ```bash
+    magento-cloud log
+    ```
