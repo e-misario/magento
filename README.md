@@ -29,6 +29,7 @@ Este repositorio contiene un script automatizado para instalar **Magento 2.4.8**
 - `--private-key`: Tu clave privada de Magento Marketplace.
 - `--github-repo`: (Opcional) URL SSH de tu repositorio de GitHub para integrarlo automáticamente.
 - `--cf-token`: (Opcional) Tu token de Cloudflare Zero Trust (Tunnel) para exponer la tienda sin abrir puertos.
+- `--install-cloud-cli`: (Opcional) Instala la herramienta de línea de comandos `magento-cloud` para gestionar proyectos en Adobe Commerce Cloud.
 
 Ejemplo completo automatizado:
 ```bash

@@ -8,6 +8,7 @@ MAGENTO_VERSION="2.4.7-p2"
 MAX_RETRIES=5
 GITHUB_REPO=""
 CF_TOKEN=""
+INSTALL_CLOUD_CLI=false
 
 # Parsear argumentos
 while [[ "$#" -gt 0 ]]; do
@@ -19,6 +20,7 @@ while [[ "$#" -gt 0 ]]; do
         --private-key) MAGENTO_PRIVATE_KEY="$2"; shift ;;
         --github-repo) GITHUB_REPO="$2"; shift ;;
         --cf-token) CF_TOKEN="$2"; shift ;;
+        --install-cloud-cli) INSTALL_CLOUD_CLI=true ;;
         *) echo "Parámetro desconocido: $1"; exit 1 ;;
     esac
     shift
@@ -174,6 +176,20 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     echo "[ERROR] Falló la verificación luego de $MAX_RETRIES intentos."
     dcompose ps
     exit 1
+fi
+
+# 6. Integración de Magento Cloud CLI (Opcional)
+if [ "$INSTALL_CLOUD_CLI" = true ]; then
+    echo "[*] Instalando dependencias para Magento Cloud CLI en el Host..."
+    sudo apt-get update && sudo apt-get install -y php-cli php-curl php-xml php-mbstring curl git unzip || echo "[!] Advertencia: No se pudieron instalar dependencias de PHP. El CLI podría no funcionar."
+    echo "[*] Descargando e instalando Magento Cloud CLI..."
+    curl -sS https://accounts.magento.cloud/cli/installer | php
+    
+    # Agregar al path si no existe
+    if ! grep -q "magento-cloud/bin" ~/.bashrc; then
+        echo 'export PATH="$PATH:$HOME/.magento-cloud/bin"' >> ~/.bashrc
+    fi
+    echo "[*] Magento Cloud CLI instalado. Reinicia tu terminal o ejecuta 'source ~/.bashrc' y luego 'magento-cloud login'."
 fi
 
 echo "=== Instalación Completada Exitosamente ==="
