@@ -4,8 +4,9 @@ set -e
 # Valores por defecto
 DOMAIN="mag.e-misario.com"
 INSTALL_DIR="$HOME/magento"
-MAGENTO_VERSION="2.4.8"
+MAGENTO_VERSION="2.4.7-p2"
 MAX_RETRIES=5
+GITHUB_REPO=""
 
 # Parsear argumentos
 while [[ "$#" -gt 0 ]]; do
@@ -15,6 +16,7 @@ while [[ "$#" -gt 0 ]]; do
         -v|--version) MAGENTO_VERSION="$2"; shift ;;
         --public-key) MAGENTO_PUBLIC_KEY="$2"; shift ;;
         --private-key) MAGENTO_PRIVATE_KEY="$2"; shift ;;
+        --github-repo) GITHUB_REPO="$2"; shift ;;
         *) echo "Parámetro desconocido: $1"; exit 1 ;;
     esac
     shift
@@ -104,8 +106,20 @@ echo "[*] Levantando contenedores..."
 ./bin/start
 
 echo "[*] Ejecutando instalación de Magento (esto tomará varios minutos)..."
-# Usamos un modo no interactivo si es posible, o bin/setup normal
-./bin/setup "$DOMAIN"
+# Usamos un modo no interactivo si es posible. Permitimos que falle al final (|| true) 
+# porque bin/setup intenta editar /etc/hosts con sudo al terminar, lo cual falla en VPS sin TTY pero no afecta la instalación.
+./bin/setup "$DOMAIN" || true
+
+# 5. Integración con repositorio GitHub para desarrollo (Opcional)
+if [ -n "$GITHUB_REPO" ]; then
+    echo "[*] Configurando repositorio GitHub para desarrollo en $GITHUB_REPO..."
+    # Mark Shust template ya inicializa un git local, agregamos el remoto
+    git remote add origin "$GITHUB_REPO" || git remote set-url origin "$GITHUB_REPO"
+    git branch -M main
+    git add .
+    git commit -m "Initial Magento $MAGENTO_VERSION Docker setup" || true
+    git push -u origin main || echo "[WARN] No se pudo hacer push al repositorio. Asegúrate de tener configuradas tus llaves SSH de GitHub en el VPS."
+fi
 
 # 5. Bucle de Verificación
 echo "[*] Verificando despliegue..."

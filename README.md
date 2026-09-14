@@ -24,9 +24,10 @@ Este repositorio contiene un script automatizado para instalar **Magento 2.4.8**
 ### Parámetros Aceptados
 - `-d, --domain`: Dominio para la tienda (por defecto: `mag.e-misario.com`)
 - `-p, --path`: Directorio de instalación (por defecto: `$HOME/magento`)
-- `-v, --version`: Versión de Magento (por defecto: `2.4.8`)
+- `-v, --version`: Versión de Magento (por defecto: `2.4.7-p2`)
 - `--public-key`: Tu clave pública de Magento Marketplace.
 - `--private-key`: Tu clave privada de Magento Marketplace.
+- `--github-repo`: (Opcional) URL SSH de tu repositorio de GitHub (ej: `git@github.com:usuario/magento-dev.git`). Si se provee, el script inicializará el repositorio localmente, hará commit de los archivos base y hará push automáticamente para que puedas versionar tu desarrollo.
 
 Ejemplo completo automatizado:
 ```bash
