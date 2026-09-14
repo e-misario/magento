@@ -84,17 +84,22 @@ if [ -f "env/app.env" ]; then
     sed -i "s/magento.test/$DOMAIN/g" env/app.env
 fi
 
-if grep -q "magento.test" docker-compose.yml; then
+if grep -q "magento.test" docker-compose.yml 2>/dev/null; then
     sed -i "s/magento.test/$DOMAIN/g" docker-compose.yml
 fi
+if grep -q "magento.test" compose.yaml 2>/dev/null; then
+    sed -i "s/magento.test/$DOMAIN/g" compose.yaml
+fi
 
-# Ajustar versión en bin/setup si es posible
+# Ajustar versión en bin/setup si es posible (aunque bin/download ya la especifica)
 if [ -f "bin/setup" ]; then
-    # Por defecto, Mark Shust's template usa la última, intentaremos inyectar la versión específica
     sed -i "s/magento\/project-community-edition/magento\/project-community-edition $MAGENTO_VERSION/g" bin/setup
 fi
 
-# 4. Iniciar Contenedores e Instalar
+# 4. Descargar Magento y Levantarlo
+echo "[*] Descargando Magento $MAGENTO_VERSION..."
+./bin/download "$MAGENTO_VERSION" || true
+
 echo "[*] Levantando contenedores..."
 ./bin/start
 
