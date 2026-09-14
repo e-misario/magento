@@ -107,8 +107,15 @@ echo "[*] Levantando contenedores..."
 
 echo "[*] Ejecutando instalación de Magento (esto tomará varios minutos)..."
 # Usamos un modo no interactivo si es posible. Permitimos que falle al final (|| true) 
-# porque bin/setup intenta editar /etc/hosts con sudo al terminar, lo cual falla en VPS sin TTY pero no afecta la instalación.
+# porque bin/setup intenta editar /etc/hosts con sudo al terminar, lo cual falla en VPS sin TTY.
 ./bin/setup "$DOMAIN" || true
+
+echo "[*] Aplicando correcciones finales de permisos post-instalación (por fallos del script original)..."
+./bin/fixowns
+./bin/fixperms
+./bin/clinotty bin/magento cache:flush
+./bin/clinotty bin/magento cron:install
+./bin/clinotty bin/magento deploy:mode:set developer
 
 # 5. Integración con repositorio GitHub para desarrollo (Opcional)
 if [ -n "$GITHUB_REPO" ]; then
