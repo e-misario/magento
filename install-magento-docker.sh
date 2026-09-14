@@ -133,6 +133,12 @@ echo "[*] Aplicando correcciones finales de permisos post-instalación (por fall
 ./bin/clinotty bin/magento cron:install
 ./bin/clinotty bin/magento deploy:mode:set developer
 
+# Parche crítico: En producción sin compose.dev.yaml, nginx.conf nunca se genera dentro del contenedor
+echo "[*] Parcheando nginx.conf dentro del contenedor (Bug de plantilla en modo producción)..."
+docker compose exec -T app cp /var/www/html/nginx.conf.sample /var/www/html/nginx.conf || true
+docker compose exec -T app sed -E -i "s/fastcgi_pass[[:space:]]+fastcgi_backend;/fastcgi_pass \$fastcgi_backend;/g" /var/www/html/nginx.conf || true
+docker compose exec -T app nginx -s reload || true
+
 # 5. Integración con repositorio GitHub para desarrollo (Opcional)
 if [ -n "$GITHUB_REPO" ]; then
     echo "[*] Configurando repositorio GitHub para desarrollo en $GITHUB_REPO..."
