@@ -7,6 +7,7 @@ INSTALL_DIR="$HOME/magento"
 MAGENTO_VERSION="2.4.7-p2"
 MAX_RETRIES=5
 GITHUB_REPO=""
+CF_TOKEN=""
 
 # Parsear argumentos
 while [[ "$#" -gt 0 ]]; do
@@ -17,6 +18,7 @@ while [[ "$#" -gt 0 ]]; do
         --public-key) MAGENTO_PUBLIC_KEY="$2"; shift ;;
         --private-key) MAGENTO_PRIVATE_KEY="$2"; shift ;;
         --github-repo) GITHUB_REPO="$2"; shift ;;
+        --cf-token) CF_TOKEN="$2"; shift ;;
         *) echo "Parámetro desconocido: $1"; exit 1 ;;
     esac
     shift
@@ -96,6 +98,20 @@ fi
 # Ajustar versión en bin/setup si es posible (aunque bin/download ya la especifica)
 if [ -f "bin/setup" ]; then
     sed -i "s/magento\/project-community-edition/magento\/project-community-edition $MAGENTO_VERSION/g" bin/setup
+fi
+
+# 3.2 Inject Cloudflare Tunnel si se proveyó el token
+if [ -n "$CF_TOKEN" ]; then
+    echo "[*] Inyectando servicio Cloudflare Tunnel (cloudflared) a compose.yaml..."
+    cat <<EOF >> compose.yaml
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=$CF_TOKEN
+    restart: unless-stopped
+EOF
 fi
 
 # 4. Descargar Magento y Levantarlo
