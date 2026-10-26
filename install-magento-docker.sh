@@ -4,8 +4,8 @@ set -e
 # Valores por defecto
 DOMAIN="mag.e-misario.com"
 INSTALL_DIR="$HOME/magento"
-MAGENTO_VERSION="2.4.7-p2"
-MAX_RETRIES=5
+MAGENTO_VERSION="2.4.8"
+MAX_RETRIES=10
 GITHUB_REPO=""
 CF_TOKEN=""
 INSTALL_CLOUD_CLI=false
@@ -151,40 +151,52 @@ if [ ! -f "compose.yaml" ] && [ ! -f "docker-compose.yml" ]; then
     curl -s https://raw.githubusercontent.com/markshust/docker-magento/master/lib/template | bash
 fi
 
-# Reemplazar dominio y optimizar límites de memoria de PHP
-if [ -f "env/app.env" ]; then
-    sed -i "s/magento.test/$DOMAIN/g" env/app.env
+# 4.1 Aislamiento de puertos para evitar colisiones en VPS compartido (con CloudPanel, MySQL, Redis, etc.)
+if [ -f "compose.yaml" ]; then
+    sed -i 's/"80:8000"/"127.0.0.1:8088:8000"/g' compose.yaml
+    sed -i 's/"443:8443"/"127.0.0.1:8448:8443"/g' compose.yaml
+    sed -i 's/"3306:3306"/"127.0.0.1:3308:3306"/g' compose.yaml
+    sed -i 's/"6379:6379"/"127.0.0.1:6388:6379"/g' compose.yaml
+    sed -i 's/"9200:9200"/"127.0.0.1:9208:9200"/g' compose.yaml
+    sed -i 's/"9300:9300"/"127.0.0.1:9308:9300"/g' compose.yaml
+    sed -i 's/"5672:5672"/"127.0.0.1:5682:5672"/g' compose.yaml
+    sed -i 's/"15672:15672"/"127.0.0.1:15682:15672"/g' compose.yaml
+    sed -i 's/"1080:1080"/"127.0.0.1:1088:1080"/g' compose.yaml
+fi
 
-    # Asegurar límite de memoria de PHP en 4G para evitar OOM en setup:di:compile
-    if grep -q "^PHP_MEMORY_LIMIT=" env/app.env; then
-        sed -i "s/^PHP_MEMORY_LIMIT=.*/PHP_MEMORY_LIMIT=4G/g" env/app.env
+# 4.2 Ajustar tiempos de arranque de OpenSearch en compose.healthcheck.yaml
+if [ -f "compose.healthcheck.yaml" ]; then
+    sed -i 's/retries: 6/retries: 30/g' compose.healthcheck.yaml
+    sed -i 's/start_period: 5s/start_period: 120s/g' compose.healthcheck.yaml
+fi
+
+# 4.3 Evitar prompts sudo en bin/setup-domain en entornos headless
+if [ -f "bin/setup-domain" ]; then
+    sed -i 's/.*bin\/clinotty sudo tee -a \/etc\/hosts.*/# &/' bin/setup-domain
+fi
+
+# 4.4 Optimizar memoria de PHP
+if [ -f "env/phpfpm.env" ]; then
+    if grep -q "^PHP_MEMORY_LIMIT=" env/phpfpm.env; then
+        sed -i "s/^PHP_MEMORY_LIMIT=.*/PHP_MEMORY_LIMIT=4G/g" env/phpfpm.env
     else
-        echo "PHP_MEMORY_LIMIT=4G" >> env/app.env
+        echo "PHP_MEMORY_LIMIT=4G" >> env/phpfpm.env
     fi
-
-    # Desactivar límite de memoria para Composer
-    if ! grep -q "COMPOSER_MEMORY_LIMIT" env/app.env; then
-        echo "COMPOSER_MEMORY_LIMIT=-1" >> env/app.env
+    if ! grep -q "COMPOSER_MEMORY_LIMIT" env/phpfpm.env; then
+        echo "COMPOSER_MEMORY_LIMIT=-1" >> env/phpfpm.env
     fi
 fi
 
-if grep -q "magento.test" docker-compose.yml 2>/dev/null; then
-    sed -i "s/magento.test/$DOMAIN/g" docker-compose.yml
-fi
-if grep -q "magento.test" compose.yaml 2>/dev/null; then
-    sed -i "s/magento.test/$DOMAIN/g" compose.yaml
+# 4.5 Generar versiones compatibles para la versión solicitada
+if [ -f "bin/detect-versions" ]; then
+    ./bin/detect-versions community "$MAGENTO_VERSION"
 fi
 
-# Ajustar versión en bin/setup si es posible (aunque bin/download ya la especifica)
-if [ -f "bin/setup" ]; then
-    sed -i "s/magento\/project-community-edition/magento\/project-community-edition $MAGENTO_VERSION/g" bin/setup
-fi
-
-# 4.2 Inject Cloudflare Tunnel si se proveyó el token
+# 4.6 Inyectar Cloudflare Tunnel en compose.override.yaml si se proveyó el token
 if [ -n "$CF_TOKEN" ]; then
-    echo "[*] Inyectando servicio Cloudflare Tunnel (cloudflared) a compose.yaml..."
-    cat <<EOF >> compose.yaml
-
+    echo "[*] Configurando Cloudflare Tunnel en compose.override.yaml..."
+    cat <<EOF > compose.override.yaml
+services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     command: tunnel --no-autoupdate run
@@ -194,19 +206,20 @@ if [ -n "$CF_TOKEN" ]; then
 EOF
 fi
 
-# 5. Descargar Magento y Levantarlo
+# 5. Descargar Magento y Levantar
 echo "[*] Descargando Magento $MAGENTO_VERSION..."
 ./bin/download community "$MAGENTO_VERSION" || true
 
-echo "[*] Levantando contenedores..."
+echo "[*] Levantando contenedores iniciales..."
 ./bin/start
 
+# Inicializar CA dentro del contenedor para mkcert
+./bin/docker-compose exec -T -u root app mkcert -install || true
+
 echo "[*] Ejecutando instalación de Magento (esto tomará varios minutos)..."
-# Usamos un modo no interactivo si es posible. Permitimos que falle al final (|| true) 
-# porque bin/setup intenta editar /etc/hosts con sudo al terminar, lo cual falla en VPS sin TTY.
 ./bin/setup "$DOMAIN" || true
 
-echo "[*] Aplicando correcciones finales de permisos post-instalación (por fallos del script original)..."
+echo "[*] Aplicando correcciones finales de permisos post-instalación..."
 ./bin/fixowns
 ./bin/fixperms
 ./bin/clinotty bin/magento cache:flush
